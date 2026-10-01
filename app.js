@@ -160,7 +160,7 @@
       if (state.onlyFav) renderList();
       return;
     }
-    if (e.target.closest('.showmap')) { setView('map'); focusListing(d.id, true); return; }
+    if (e.target.closest('.showmap')) { cameFrom = d.id; setView('map'); focusListing(d.id, true); return; }
     const img = e.target.closest('.track img');
     if (img && !car.dataset.swiped) openLB(d, +img.dataset.i);
   });
@@ -213,6 +213,16 @@
     const roads = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: .7 });
     const topo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '© Esri' });
     sat.addTo(map); labels.addTo(map); roads.addTo(map);
+    const closeCtl = L.control({ position: 'topright' });
+    closeCtl.onAdd = () => {
+      const b = L.DomUtil.create('button', 'mapclose');
+      b.type = 'button'; b.setAttribute('aria-label', 'Close map and go back to listings'); b.title = 'Back to listings';
+      b.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg><span>Listings</span>';
+      L.DomEvent.disableClickPropagation(b);
+      L.DomEvent.on(b, 'click', e => { L.DomEvent.preventDefault(e); backToList(); });
+      return b;
+    };
+    closeCtl.addTo(map);
     L.control.layers({ 'Satellite': sat, 'Topographic': topo }, { 'Town labels': labels, 'Roads': roads }, { position: 'topright' }).addTo(map);
     L.control.scale({ imperial: true, metric: false }).addTo(map);
     const lg = L.control({ position: 'bottomleft' });
@@ -338,6 +348,18 @@
     $('#tabMap').onclick = () => setView('map');
   }
   function save() { store.set('state', state); renderList(); }
+  let cameFrom = null;
+  function backToList() {
+    const id = selected || cameFrom;
+    setView('list');
+    const el = id && document.getElementById('c-' + id);
+    if (el) {
+      document.documentElement.style.setProperty('--stick', $('#hdr').offsetHeight + 'px');
+      el.scrollIntoView({ block: 'start' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+    }
+    cameFrom = null;
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && view === 'map' && $('#lb').hidden) backToList(); });
   function setView(v) {
     view = v;
     $('#tabList').setAttribute('aria-selected', v === 'list'); $('#tabMap').setAttribute('aria-selected', v === 'map');
