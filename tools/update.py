@@ -45,7 +45,7 @@ def flags(d):
     if not p: pf = "unknown"
     elif re.search(r"no utilities|no power|none", p): pf = "no"
     elif re.search(r"no electrical|off.?grid|solar|generator", p) and not re.search(r"grid available|grid power", p): pf = "off-grid"
-    elif re.search(r"available|nearby|borders|along|further|lot line|at road", p) and not re.search(r"stub|on site|in place|panel|connected", p): pf = "nearby"
+    elif re.search(r"available|nearby|borders|along|further|lot line|at road|need|pull|bring|extend|to be run", p) and not re.search(r"stub|on site|in place|panel|connected", p): pf = "nearby"
     else: pf = "yes"
     h = d.get("hoa")
     hf = "unknown" if not h else ("none" if str(h).lower().startswith("none") else "yes")
