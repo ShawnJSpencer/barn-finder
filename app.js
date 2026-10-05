@@ -7,6 +7,11 @@
     get(k, d) { try { const v = localStorage.getItem('bf.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
     set(k, v) { try { localStorage.setItem('bf.' + k, JSON.stringify(v)); } catch {} }
   };
+  const LOCS = {
+    salem: { label: 'Salem, UT', file: 'listings.json', center: [39.9, -111.65], zoom: 9, parcels: true, foot: 'Drive times are estimates from your home in Salem.' },
+    swan: { label: 'Swan Valley, ID', file: 'listings-swan.json', center: [43.35, -111.45], zoom: 8, parcels: false, foot: 'Drive times are estimates from your place in Swan Valley. Parcel outlines aren\'t available in Idaho or Wyoming yet.' }
+  };
+  let loc = store.get('loc', 'salem'); if (!LOCS[loc]) loc = 'salem';
   let DATA = [], META = {}, view = 'list';
   const favs = new Set(store.get('favs', []));
   const state = Object.assign({
@@ -101,7 +106,7 @@
           <div class="price">${d.priceMax ? short(d.price) + '–' + short(d.priceMax) : money(d.price)}${drop && drop.prev && drop.days <= 60 ? `<span class="was">${short(drop.prev)}</span>` : ''}</div>
           <div class="acres">${d.acresMax ? d.acres + '–' + d.acresMax : d.acres} ac <small>· ${short(ppa)}/ac</small></div>
         </div>
-        <div class="loc"><b>${esc(d.city)}</b>${d.addr ? ' · ' + esc(d.addr) : ''} <span>· ${esc(d.county)} Co.</span></div>
+        <div class="loc"><b>${esc(d.city)}</b>${d.addr ? ' · ' + esc(d.addr) : ''} <span>· ${esc(d.county.includes(',') ? d.county.replace(',', ' Co.,') : d.county + ' Co.')}</span></div>
         <div class="drive"><span class="pill ${d.driveMin > 60 ? 'far' : ''}">~${d.driveMin} min drive</span><span>${d.miles} mi straight-line</span>${d.approx ? '<span title="Location approximate">· approx. location</span>' : ''}</div>
         <div class="util">
           <span class="u ${d.waterFlag}"><i></i>Water: ${utilLabel[d.waterFlag]}</span>
@@ -123,7 +128,7 @@
         ${hist ? `<details class="hist"><summary>Price history</summary><table>${hist}</table></details>` : ''}
         <div class="actions">
           <a class="btn primary" href="${esc(d.url)}" target="_blank" rel="noopener">View listing</a>
-          <button class="btn showmap">Satellite + parcel</button>
+          <button class="btn showmap">${LOCS[loc].parcels ? 'Satellite + parcel' : 'Satellite view'}</button>
           <a class="btn" href="${gm}" target="_blank" rel="noopener">Google Maps</a>
         </div>
       </div>
@@ -207,7 +212,7 @@
   let map = null, markers = {}, layerGroup = null, parcelLayer = null, parcelCache = {}, selected = null;
   function initMap() {
     if (map) return;
-    map = L.map('map', { zoomControl: true }).setView([39.9, -111.65], 9);
+    map = L.map('map', { zoomControl: true }).setView(LOCS[loc].center, LOCS[loc].zoom);
     const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' });
     const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
     const roads = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: .7 });
@@ -286,6 +291,7 @@
     const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json();
   }
   async function loadParcel(d) {
+    if (!LOCS[loc].parcels) return null;
     if (parcelCache[d.id] !== undefined) return drawParcel(d, parcelCache[d.id]);
     let gj = null;
     try {
@@ -381,21 +387,47 @@
     $('#seeChanged').onclick = () => { state.sort = 'changed'; $('#sort').value = 'changed'; save(); };
   }
 
-  async function boot() {
-    bind();
+  async function loadData() {
+    const L0 = LOCS[loc];
+    $('#locLink').textContent = L0.label;
+    $('#locNext').textContent = LOCS[loc === 'salem' ? 'swan' : 'salem'].label;
+    $('#locLink').title = 'Switch to ' + LOCS[loc === 'salem' ? 'swan' : 'salem'].label;
+    $('#footLoc').textContent = L0.foot;
+    $('#updated').textContent = 'Loading listings…';
+    $('#news').hidden = true;
     try {
-      const r = await fetch('listings.json?v=' + Date.now(), { cache: 'no-store' });
+      const r = await fetch(L0.file + '?v=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status);
       const j = await r.json();
       META = j; DATA = j.listings;
       const up = new Date(j.updated);
       $('#updated').textContent = `${DATA.length} properties · updated ${up.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${up.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
     } catch (e) {
+      DATA = []; META = {};
       $('#updated').textContent = 'Could not load listings';
       $('#grid').innerHTML = '<div class="empty"><h2>Listings did not load</h2><p>Check your connection and reload the page.</p></div>';
-      return;
+      return false;
     }
     news(); renderList();
-    if (location.hash === '#map') setView('map');
+    return true;
+  }
+  async function switchLoc() {
+    loc = loc === 'salem' ? 'swan' : 'salem';
+    store.set('loc', loc);
+    selected = null; cameFrom = null; parcelCache = {};
+    if (parcelLayer) parcelLayer.clearLayers();
+    window.scrollTo(0, 0);
+    const ok = await loadData();
+    if (ok && map) {
+      map.setView(LOCS[loc].center, LOCS[loc].zoom);
+      if (view === 'map') setTimeout(() => map.invalidateSize(), 50);
+    }
+  }
+  async function boot() {
+    bind();
+    $('#locLink').onclick = switchLoc;
+    const ok = await loadData();
+    if (ok && location.hash === '#map') setView('map');
   }
   boot();
 })();

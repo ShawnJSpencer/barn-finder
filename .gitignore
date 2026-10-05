@@ -1,4 +1,4 @@
 tools/out/
-tools/incoming.jsonl
-tools/seen.txt
+tools/incoming*.jsonl
+tools/seen*.txt
 __pycache__/

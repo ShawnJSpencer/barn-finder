@@ -53,7 +53,14 @@ header.top{position:sticky;top:0;z-index:1000;background:var(--sage-deep);color:
 :root[data-theme="dark"] header.top{background:#26301F}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) header.top{background:#26301F}}
 .topbar{display:flex;align-items:center;gap:16px;padding-block:12px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.srch{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;text-align:center;line-height:1.2;min-width:0;color:#F4F6EF}
+.srch-lbl{font:600 .68rem/1.2 var(--body);letter-spacing:.09em;text-transform:uppercase;opacity:.75}
+.loclink{border:0;background:none;color:inherit;cursor:pointer;padding:2px 2px;font:700 1.15rem/1.25 var(--display);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px;text-decoration-color:rgba(244,246,239,.6)}
+.loclink:hover{text-decoration-color:#F2D27A}
+.loclink:focus-visible{outline:2px solid #F2D27A;outline-offset:3px;border-radius:4px}
+.srch-hint{font-size:.72rem;opacity:.7}
+@media (max-width:600px){.topbar{gap:10px 12px}.tabs{order:2}.srch{order:3;align-items:flex-end;text-align:right}.loclink{font-size:1.02rem}.srch-hint{display:none}}
 .brand svg{flex:none}
 .brand h1{font:700 1.45rem/1 var(--display);letter-spacing:.01em;margin:0}
 .brand small{display:block;font:500 .78rem/1.2 var(--body);opacity:.8;letter-spacing:.02em;margin-top:3px}
@@ -200,6 +207,11 @@ details.hist td:last-child{text-align:right;font-family:var(--mono);font-size:.7
       <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#F4F6EF"/><path d="M12 30 32 14l20 16v22H12z" fill="#B65E3C"/><path d="M24 52V36h16v16" fill="#F4F6EF"/><path d="M24 36l16 16M40 36 24 52" stroke="#B65E3C" stroke-width="2.4"/><path d="M27 26h10v6H27z" fill="#F4F6EF"/></svg>
       <div><h1>Barn Finder</h1><small id="updated">Loading listings…</small></div>
     </div>
+    <div class="srch" id="locBox">
+      <span class="srch-lbl">Searching near</span>
+      <button type="button" class="loclink" id="locLink" aria-describedby="locHint">Salem, UT</button>
+      <span class="srch-hint" id="locHint">Tap to switch to <span id="locNext">Swan Valley, ID</span></span>
+    </div>
     <div class="tabs" role="tablist">
       <button role="tab" id="tabList" aria-selected="true">Listings</button>
       <button role="tab" id="tabMap" aria-selected="false">Map</button>
@@ -246,7 +258,7 @@ details.hist td:last-child{text-align:right;font-family:var(--mono);font-size:.7
 <main class="list wrap" id="listView">
   <div class="grid" id="grid"></div>
   <div class="empty" id="empty" hidden><h2>No properties match</h2><p>Try a longer drive time, a higher price or fewer filters.</p></div>
-  <p class="foot">Drive times are estimates from your house. Listing details come from public MLS-syndicated pages; confirm water rights, zoning and parcel lines with the agent and county before an offer. Parcel outlines: Utah UGRC statewide parcels. Imagery: Esri World Imagery.</p>
+  <p class="foot"><span id="footLoc">Drive times are estimates from your home in Salem.</span> Listing details come from public MLS-syndicated pages; confirm water rights, zoning and parcel lines with the agent and county before an offer. Parcel outlines (Utah listings only): Utah UGRC statewide parcels. Imagery: Esri World Imagery.</p>
 </main>
 
 <section id="mapView" hidden>

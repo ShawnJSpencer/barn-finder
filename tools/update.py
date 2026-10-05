@@ -55,8 +55,17 @@ def flags(d):
 
 COUNTY_BY_ZIP = {"Utah": "84651 84655 84660 84663 84633 84013 84626 84043 84653 84664 84062 84003 84005 84045 84004".split(),
                  "Juab": "84639 84648 84645 84628".split(), "Wasatch": "84032 84049 84082".split(), "Salt Lake": "84096 84065 84020".split()}
+ZIP_COUNTY_ID_WY = {
+    "Bonneville, ID": "83428 83449 83401 83402 83404 83406 83427".split(),
+    "Teton, ID": "83422 83452 83455 83424".split(),
+    "Jefferson, ID": "83442 83444 83434 83443 83450".split(),
+    "Madison, ID": "83440 83448 83445".split(),
+    "Lincoln, WY": "83110 83111 83112 83118 83119 83120 83122 83123 83126 83127 83128".split(),
+    "Teton, WY": "83414 83001 83014".split()}
 def county(z):
     for c, zs in COUNTY_BY_ZIP.items():
+        if z in zs: return c
+    for c, zs in ZIP_COUNTY_ID_WY.items():
         if z in zs: return c
     return "Sanpete"
 
@@ -65,11 +74,12 @@ def money(n): return "${:,.0f}".format(n)
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("incoming"); ap.add_argument("--seen"); ap.add_argument("--today")
+    ap.add_argument("--data", default="listings.json"); ap.add_argument("--out", default="tools/out"); ap.add_argument("--label", default="Salem, UT")
     a = ap.parse_args()
     now = datetime.datetime.now(ZoneInfo("America/Denver"))
     today = a.today or now.date().isoformat()
     home = tuple(float(x) for x in os.environ["HOME_LL"].split(","))
-    path = os.path.join(ROOT, "listings.json")
+    path = os.path.join(ROOT, a.data)
     J = json.load(open(path))
     by_id = {d["id"]: d for d in J["listings"]}
     by_mls = {d["mls"]: d for d in J["listings"] if d.get("mls")}
@@ -138,10 +148,10 @@ def main():
     J["listings"].sort(key=lambda d: d["driveMin"])
     json.dump(J, open(path, "w"), separators=(",", ":"))
 
-    write_email(J, changes, skipped, today)
+    write_email(J, changes, skipped, today, os.path.join(ROOT, a.out), a.label)
 
-def write_email(J, changes, skipped, today):
-    out = os.path.join(ROOT, "tools", "out"); os.makedirs(out, exist_ok=True)
+def write_email(J, changes, skipped, today, out=None, label="Salem, UT"):
+    out = out or os.path.join(ROOT, "tools", "out"); os.makedirs(out, exist_ok=True)
     by_id = {d["id"]: d for d in J["listings"]}
     new = [by_id[c["id"]] for c in changes if c["kind"] == "new" and c["id"] in by_id]
     price = [(by_id[c["id"]], c) for c in changes if c["kind"] == "price" and c["id"] in by_id]
@@ -163,7 +173,7 @@ def write_email(J, changes, skipped, today):
 <p style="font-size:14px;margin:8px 0">{e(d.get("desc") or "")}</p>
 <a href="{e(d["url"])}" style="color:#2F6B8F;font-weight:600">View listing</a> &nbsp;·&nbsp; <a href="{APP_URL}#list" style="color:#2F6B8F;font-weight:600">Open Barn Finder</a></div></div>'''
     parts = [f'<div style="{S["wrap"]}"><div style="max-width:600px;margin:0 auto">',
-             f'<h1 style="font-family:Rockwell,Georgia,serif;color:#4E6248;margin:0 0 4px;font-size:24px">Barn Finder · {datetime.date.fromisoformat(today):%b %-d}</h1>',
+             f'<h1 style="font-family:Rockwell,Georgia,serif;color:#4E6248;margin:0 0 4px;font-size:24px">Barn Finder · {e(label)} · {datetime.date.fromisoformat(today):%b %-d}</h1>',
              f'<p style="margin:0 0 6px;color:#626B5B">{len(new)} new · {len(price)} price change{"s" if len(price)!=1 else ""} · {len(pend)} under contract · {len(gone)} off the list · {len(J["listings"])} tracked</p>']
     if new:
         parts.append(f'<h2 style="{S["h"]}">New listings</h2>'); parts += [row(d) for d in sorted(new, key=lambda d: d["driveMin"])]
@@ -178,9 +188,9 @@ def write_email(J, changes, skipped, today):
         parts.append("</ul>")
     if not (new or price or pend or gone):
         parts.append('<p style="font-size:15px">No new listings or price changes today. Everything in the app is current.</p>')
-    parts.append(f'<p style="font-size:12px;color:#626B5B;margin-top:18px">Criteria: up to $1.5M, 5+ acres, within about an hour of Salem. <a href="{APP_URL}" style="color:#2F6B8F">Open the app</a></p></div></div>')
+    parts.append(f'<p style="font-size:12px;color:#626B5B;margin-top:18px">Criteria: up to $1.5M, 5+ acres, within about an hour of {e(label)}. <a href="{APP_URL}" style="color:#2F6B8F">Open the app</a></p></div></div>')
     open(os.path.join(out, "email.html"), "w").write("\n".join(parts))
-    txt = [f"Barn Finder {today}: {len(new)} new, {len(price)} price changes, {len(pend)} under contract, {len(gone)} removed."]
+    txt = [f"Barn Finder ({label}) {today}: {len(new)} new, {len(price)} price changes, {len(pend)} under contract, {len(gone)} removed."]
     for d in new: txt.append(f"NEW  {money(d['price'])}  {d['acres']} ac  {d['city']}  ~{d['driveMin']} min  {d['url']}")
     for d, c in price: txt.append(f"PRICE {money(c['old'])} -> {money(c['new'])}  {d['acres']} ac  {d['city']}  {d['url']}")
     for d in pend: txt.append(f"UNDER CONTRACT  {d['city']}  {d['url']}")
