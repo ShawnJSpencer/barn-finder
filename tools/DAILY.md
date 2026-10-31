@@ -32,7 +32,7 @@ WebFetch each county search for the location. Ask for every card's listing id
 - https://www.landsearch.com/properties/salt-lake-county-ut/filter/price[max]=1500000,size[min]=5
 
 Swan Valley pages use the same pattern with the county slugs from the table above.
-If a page says more than 50 properties, also fetch page 2 (`/p2` after the filter, as above).
+If a page says more than 50 properties, also fetch page 2 (`/p2` after the filter, as above), and page 3 (`/p3`) past 100 — Lincoln County WY passed 100 in late October.
 Write every id seen to `tools/seen-<location>.txt` (one file per location).
 
 
