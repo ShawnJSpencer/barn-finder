@@ -12,6 +12,7 @@ then merge, publish and email once. The task prompt supplies each location's coo
 Page 2 of a county search: put `/p2` AFTER the filter, e.g.
 `.../lincoln-county-wy/filter/price[max]=1500000,size[min]=5/p2` (before the filter it drops the filter).
 Listing details: `https://www.landsearch.com/properties/x/<id>` redirects to the full page.
+LandSearch's CDN sometimes serves week-old copies of the search pages. Always add `?refresh=YYYYMMDD` (today's date) to the end of every search-page URL, including `/p2`. If the "listed X days ago" labels match the last run, the page is stale.
 LandSearch rate-limits bursts: fetch details 3-4 at a time with ~15 s pauses. If a page is refused
 with a rate-limit error, don't retry that page today; note it and move on.
 
